@@ -1,0 +1,65 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  passwordHash String
+  createdAt    DateTime    @default(now())
+  savedLanes   SavedLane[]
+}
+
+model SavedLane {
+  id             String   @id @default(uuid())
+  userId         String
+  origin         String
+  destination    String
+  weightKg       Float
+  cargoClass     String
+  gstRegistered  Boolean
+  createdAt      DateTime @default(now())
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RateBenchmark {
+  id          String   @id @default(uuid())
+  mode        String   // ROAD_FTL, ROAD_LTL, RAIL_BULK, RAIL_PARCEL, AIR
+  key         String   @unique // Unique identifier for the constant (e.g., road_ftl_base_rate)
+  value       Float    // The numeric value
+  description String?  // What this constant does
+  updatedAt   DateTime @updatedAt
+}
+
+// Keeping QuoteRequest & QuoteResult models from before as they log history for analytics,
+// but the prompt explicitly asked for Users and SavedLanes. We'll add them to save searches.
+model QuoteRequest {
+  id               String   @id @default(uuid())
+  origin           String
+  destination      String
+  distanceKm       Float
+  weightKg         Float
+  category         String
+  isRcmRegistered  Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  results          QuoteResult[]
+}
+
+model QuoteResult {
+  id              String   @id @default(uuid())
+  quoteRequestId  String
+  mode            String
+  totalCost       Float
+  transitDaysMin  Int
+  transitDaysMax  Int
+  isOptimal       Boolean  @default(false)
+  
+  quoteRequest    QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+}

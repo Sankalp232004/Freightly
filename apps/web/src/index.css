@@ -1,0 +1,121 @@
+@import '@fontsource/source-serif-4/400.css';
+@import '@fontsource/source-serif-4/600.css';
+@import '@fontsource/source-serif-4/700.css';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #F6F2EA;
+  --paper-card: #FFFFFF;
+  --paper-input: #FCFAF6;
+  --ink: #1A1A17;
+  --muted: #6B665B;
+  --rule: #D9D2C3;
+  --rule-light: #EBE6DC;
+  --stamp: #B23A2E;
+  --stamp-hover: #982D23;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #181715;
+    --paper-card: #201E1B;
+    --paper-input: #1C1A17;
+    --ink: #EDE8DE;
+    --muted: #9E988D;
+    --rule: #36322C;
+    --rule-light: #2A2722;
+    --stamp: #D44D3F;
+    --stamp-hover: #E35E50;
+  }
+}
+
+/* Strict Consignment Note Rules: 0px Border Radius & Crisp Hairlines */
+*, *::before, *::after {
+  border-radius: 0 !important;
+}
+
+/* Remove default browser bevels and rounded corners from form controls */
+input, select, textarea, button {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+/* Focus styles */
+input:focus, select:focus, textarea:focus, button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+/* Tabular figures for money, quantities, and alignment */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  -webkit-font-feature-settings: "tnum";
+  font-feature-settings: "tnum";
+}
+
+/* Dotted leader for printed ledger breakdown */
+.ledger-dotted-leader {
+  flex-grow: 1;
+  border-bottom: 1px dotted var(--rule);
+  margin: 0 0.5rem 0.35rem 0.5rem;
+}
+
+/* Ledger double rule for totals */
+.ledger-total-rule {
+  border-top: 3px double var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* Rubber-stamp badge for lowest cost and verified rates */
+.stamp-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid var(--stamp);
+  color: var(--stamp);
+  padding: 0.125rem 0.375rem;
+  font-family: '"IBM Plex Mono"', monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+/* Print Stylesheet for 1-page PDF summary */
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    font-size: 11pt;
+  }
+
+  header, nav, .no-print, button {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .main-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .card-container {
+    box-shadow: none !important;
+    border: 1px solid #999999 !important;
+    page-break-inside: avoid;
+  }
+}
