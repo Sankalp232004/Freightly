@@ -28,10 +28,16 @@ export function createApp(pool: Pool): Application {
     contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
   }));
 
-  // CORS — locked to app origin in production
-  const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
+  // CORS — in production on Render, the API and SPA are co-located on the
+  // same origin so CORS is not strictly needed. We honour CORS_ORIGIN or
+  // RENDER_EXTERNAL_URL when set, and fall back to true (reflect origin) so
+  // the health endpoint is still reachable from Render's own health-checker.
+  const corsOrigin =
+    process.env.CORS_ORIGIN ??
+    process.env.RENDER_EXTERNAL_URL ??
+    (process.env.NODE_ENV === 'production' ? true : 'http://localhost:5173');
   app.use(cors({
-    origin: process.env.NODE_ENV === 'production' ? corsOrigin : true,
+    origin: corsOrigin,
     credentials: true,
   }));
 
