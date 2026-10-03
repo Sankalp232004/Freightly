@@ -23,14 +23,11 @@ export interface CompareInput {
 export interface LineItem {
   label: string;
   amountPaise: number;
-  amountInr: number;
-  description?: string;
 }
 
 export interface TransitDuration {
   minDays: number;
   maxDays: number;
-  label: string;
 }
 
 export interface ModeResult {

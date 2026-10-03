@@ -34,6 +34,7 @@ export type TransportMode = 'road_ftl' | 'road_ltl' | 'rail' | 'air' | 'coastal'
 export interface ModeResult {
   mode: TransportMode;
   label: string;
+  vehicleType?: string; // human-readable vehicle/vessel spec
   lineItems: LineItem[];
   totalPaise: number; // === sum(lineItems.amountPaise), guaranteed
   transit: TransitRange;
@@ -118,13 +119,26 @@ export function calcRoadFtl(
   // Pick the smallest tier that fits each truck's share
   const tier = tiers.find((t) => t.capacityKg >= weightPerTruck) ?? largestTier;
 
+  const vehicleLabels: Record<string, string> = {
+    mini:       'Mini Truck (up to 1.5T)',
+    medium:     'Medium Truck / 9T GVW',
+    large:      'Large Truck / 25T GVW',
+    multi_axle: 'Multi-Axle / 40T GVW',
+  };
+  const vehicleType = vehicleLabels[tier.key] ?? tier.key;
+
   const weightTonne = input.weightKg / 1000;
   const baseFreightInr = tier.ratePerTonneKm * distanceKm * weightTonne * trucksNeeded;
   const fuelSurchargeInr = baseFreightInr * param(rates, 'road.fuel_surcharge_pct');
   const tollsInr = param(rates, 'road.toll_rate_per_km') * distanceKm * trucksNeeded;
   const handlingInr = param(rates, 'road.handling_per_tonne') * weightTonne;
 
-  const subtotalInr = baseFreightInr + fuelSurchargeInr + tollsInr + handlingInr;
+  // Express dispatch: 15% priority surcharge on road FTL
+  const isExpress = input.urgency === 'express';
+  const expressSubtotal = baseFreightInr + fuelSurchargeInr + tollsInr + handlingInr;
+  const expressSurchargeInr = isExpress ? expressSubtotal * 0.15 : 0;
+
+  const subtotalInr = expressSubtotal + expressSurchargeInr;
   const gstRate = input.gstRegistered
     ? param(rates, 'gst.gta_rcm_rate')
     : param(rates, 'gst.gta_fcm_rate');
@@ -135,18 +149,24 @@ export function calcRoadFtl(
     { label: 'Fuel surcharge', amountPaise: toPaise(fuelSurchargeInr) },
     { label: 'Tolls', amountPaise: toPaise(tollsInr) },
     { label: 'Handling (loading + unloading)', amountPaise: toPaise(handlingInr) },
+    ...(isExpress ? [{ label: 'Express dispatch surcharge (15%)', amountPaise: toPaise(expressSurchargeInr) }] : []),
     { label: `GST ${(gstRate * 100).toFixed(0)}% (${input.gstRegistered ? 'RCM' : 'FCM'})`, amountPaise: toPaise(gstInr) },
   ];
 
   const totalPaise = lineItems.reduce((s, li) => s + li.amountPaise, 0);
-  const transit = transitRange(distanceKm, param(rates, 'road.speed_km_per_day'), param(rates, 'road.transit_buffer_days'));
+  const transit = transitRange(
+    distanceKm,
+    param(rates, 'road.speed_km_per_day') * (isExpress ? 1.25 : 1),
+    isExpress ? 0 : param(rates, 'road.transit_buffer_days'),
+  );
   const co2Kg = (weightTonne * distanceKm * param(rates, 'co2.road_ftl_kg_per_tonne_km')) * trucksNeeded;
 
   const ewayBillRequired = !!(input.goodsValueInr && input.goodsValueInr > param(rates, 'compliance.eway_bill_threshold_inr'));
 
   return {
     mode: 'road_ftl',
-    label: 'Road — Full Truck Load',
+    label: isExpress ? 'Road — Full Truck Load (Express)' : 'Road — Full Truck Load',
+    vehicleType: trucksNeeded > 1 ? `${trucksNeeded}× ${vehicleType}` : vehicleType,
     lineItems,
     totalPaise,
     transit,
@@ -157,6 +177,7 @@ export function calcRoadFtl(
     viable: true,
     rankReason: trucksNeeded > 1
       ? `Requires ${trucksNeeded} trucks; dedicated capacity`
+      : isExpress ? 'Priority express dispatch; dedicated truck with faster transit'
       : 'Dedicated truck; faster and more reliable than LTL',
   };
 }
@@ -308,6 +329,7 @@ export function calcAir(
   const baseInr = Math.max(minCharge, ratePerKg * chargeableWeightKg);
   const handlingInr = param(rates, 'air.handling_flat');
 
+  // Express dispatch is default for air; no extra surcharge needed
   const subtotalInr = baseInr + handlingInr;
   const gstInr = subtotalInr * param(rates, 'gst.air_freight_rate');
 
@@ -324,10 +346,11 @@ export function calcAir(
 
   const totalPaise = lineItems.reduce((s, li) => s + li.amountPaise, 0);
 
-  // Air transit: fixed range, always 1–2 days
+  // Air transit: 1–2 days (express same-day option if urgency=express)
+  const isExpress = input.urgency === 'express';
   const transit: TransitRange = {
-    minDays: param(rates, 'air.transit_days_min'),
-    maxDays: param(rates, 'air.transit_days_max'),
+    minDays: isExpress ? 1 : param(rates, 'air.transit_days_min'),
+    maxDays: isExpress ? 1 : param(rates, 'air.transit_days_max'),
   };
 
   const weightTonne = input.weightKg / 1000;
@@ -336,7 +359,8 @@ export function calcAir(
 
   return {
     mode: 'air',
-    label: 'Air',
+    label: 'Air Freight',
+    vehicleType: isExpress ? 'Priority Express Air (Next Flight Out)' : 'Standard Air Cargo',
     lineItems,
     totalPaise,
     transit,
@@ -345,7 +369,7 @@ export function calcAir(
     ewayBillRequired,
     distanceKm,
     viable: true,
-    rankReason: 'Fastest option; high cost per kg',
+    rankReason: isExpress ? 'Priority express; next available flight' : 'Fastest bulk option; premium cost per kg',
   };
 }
 
