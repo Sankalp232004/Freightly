@@ -1,6 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { Pool } from 'pg';
-import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { createError } from '../middleware/errorHandler.js';
 
 export const comparisonsRouter = Router();

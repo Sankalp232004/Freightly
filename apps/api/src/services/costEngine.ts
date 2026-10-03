@@ -346,11 +346,11 @@ export function calcAir(
 
   const totalPaise = lineItems.reduce((s, li) => s + li.amountPaise, 0);
 
-  // Air transit: 1–2 days (express same-day option if urgency=express)
+  // Air transit: 1–2 days (express air priority dispatch)
   const isExpress = input.urgency === 'express';
   const transit: TransitRange = {
-    minDays: isExpress ? 1 : param(rates, 'air.transit_days_min'),
-    maxDays: isExpress ? 1 : param(rates, 'air.transit_days_max'),
+    minDays: param(rates, 'air.transit_days_min'),
+    maxDays: param(rates, 'air.transit_days_max'),
   };
 
   const weightTonne = input.weightKg / 1000;
